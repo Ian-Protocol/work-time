@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import TamagotchiPlayground, { useTamagotchiEngine } from "./tamagotchi-playground";
+
+const createEventId = () => {
+    if (typeof window !== "undefined" && window.crypto?.randomUUID) {
+        return window.crypto.randomUUID();
+    }
+
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
 
 const formatTime = (totalSeconds) => {
     const minutes = Math.floor(totalSeconds / 60)
@@ -31,6 +40,19 @@ export default function Todo() {
     const [taskName, setTaskName] = useState("");
     const [durationInput, setDurationInput] = useState("25");
     const [error, setError] = useState("");
+    const [tamagotchiState, registerFeed] = useTamagotchiEngine();
+    const prevTasksRef = useRef([]);
+
+    const reportPoints = useCallback(
+        (event) => {
+            registerFeed({
+                ...event,
+                eventId: createEventId(),
+                awardedAt: Date.now(),
+            });
+        },
+        [registerFeed],
+    );
 
     const hasRunningTasks = useMemo(
         () =>
@@ -65,6 +87,7 @@ export default function Todo() {
                             isRunning: false,
                             isCompleted: true,
                             points: 0,
+                            completedBy: "timer",
                         };
                     }
 
@@ -100,6 +123,7 @@ export default function Todo() {
             isRunning: false,
             isCompleted: false,
             points: null,
+            completedBy: null,
         };
 
         setTasks((prev) => [...prev, newTask]);
@@ -132,11 +156,13 @@ export default function Todo() {
                 }
 
                 const points = calculatePoints(task);
+
                 return {
                     ...task,
                     isRunning: false,
                     isCompleted: true,
                     points,
+                    completedBy: "manual",
                 };
             }),
         );
@@ -145,6 +171,36 @@ export default function Todo() {
     const handleDeleteTask = (id) => {
         setTasks((prev) => prev.filter((task) => task.id !== id));
     };
+
+    useEffect(() => {
+        const prevTasks = prevTasksRef.current;
+        const newlyCompleted = [];
+
+        tasks.forEach((task) => {
+            if (!task.isCompleted || task.points == null) {
+                return;
+            }
+
+            const prevTask = prevTasks.find((item) => item.id === task.id);
+            const wasCompletedBefore =
+                prevTask?.isCompleted && prevTask?.points != null;
+
+            if (!wasCompletedBefore) {
+                newlyCompleted.push({
+                    taskId: task.id,
+                    taskTitle: task.title,
+                    points: task.points,
+                    type: task.completedBy === "timer" ? "timer-ended" : "manual-complete",
+                });
+            }
+        });
+
+        prevTasksRef.current = tasks;
+
+        if (newlyCompleted.length > 0) {
+            newlyCompleted.forEach(reportPoints);
+        }
+    }, [tasks, reportPoints]);
 
     return (
         <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
@@ -163,6 +219,8 @@ export default function Todo() {
                         the timer run out gives 0 points.
                     </p>
                 </header>
+
+                <TamagotchiPlayground state={tamagotchiState} totalPoints={totalPoints} />
 
                 <section className="rounded-2xl bg-white/10 p-6 shadow-2xl backdrop-blur">
                     <form

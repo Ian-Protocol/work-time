@@ -24,3 +24,69 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.tamagotchi-track {
+  position: relative;
+  height: 130px;
+}
+
+.tamagotchi-avatar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 120px;
+  animation: tamagotchi-walk 18s linear infinite alternate;
+}
+
+.tamagotchi-sprite {
+  animation: tamagotchi-bob 3s ease-in-out infinite;
+  border-radius: 9999px;
+}
+
+.tamagotchi-shadow {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  width: 110px;
+  height: 24px;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  filter: blur(12px);
+}
+
+.tamagotchi-speech {
+  position: absolute;
+}
+
+.tamagotchi-speech::after {
+  content: "";
+  position: absolute;
+  bottom: -12px;
+  right: 32px;
+  width: 20px;
+  height: 20px;
+  background: inherit;
+  transform: rotate(45deg);
+  border-radius: 4px;
+}
+
+@keyframes tamagotchi-walk {
+  0% {
+    left: 0;
+  }
+
+  100% {
+    left: calc(100% - 120px);
+  }
+}
+
+@keyframes tamagotchi-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
+}
