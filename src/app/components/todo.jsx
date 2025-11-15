@@ -81,6 +81,9 @@ export default function Todo() {
     const [taskName, setTaskName] = useState("");
     const [durationInput, setDurationInput] = useState("25");
     const [error, setError] = useState("");
+    const [wizardStep, setWizardStep] = useState(1);
+    const [isWizardComplete, setIsWizardComplete] = useState(false);
+    const [taskMode, setTaskMode] = useState("manual");
     const [aiTaskPrompt, setAiTaskPrompt] = useState("");
     const [aiTaskError, setAiTaskError] = useState("");
     const [aiTaskInfo, setAiTaskInfo] = useState("");
@@ -96,6 +99,7 @@ export default function Todo() {
     });
     const [bearStatusError, setBearStatusError] = useState("");
     const [isFetchingBear, setIsFetchingBear] = useState(false);
+    const isManualMode = taskMode === "manual";
 
     const appendTask = (title, durationMinutes) => {
         const trimmedTitle = (title ?? "").trim();
@@ -240,6 +244,19 @@ export default function Todo() {
         setTasks((prev) => prev.filter((task) => task.id !== id));
     };
 
+    const handleWizardNav = (step) => {
+        setWizardStep(step);
+        if (step > 1) {
+            setIsWizardComplete(true);
+        }
+    };
+
+    const handleToggleTaskMode = () => {
+        setTaskMode((prev) => (prev === "manual" ? "ai" : "manual"));
+        setAiTaskError("");
+        setAiTaskInfo("");
+    };
+
     const handleCreateTaskFromPrompt = async () => {
         const cleanedPrompt = aiTaskPrompt.trim();
         if (!cleanedPrompt) {
@@ -382,12 +399,12 @@ export default function Todo() {
         <main className="min-h-screen bg-[#fcd3b6] text-[#5b2f16]">
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-10 sm:px-8">
                 <section className="w-full rounded-[32px] border-4 border-[#f1b487] bg-[#fbe0c6] p-4 shadow-[0_12px_0_#d18f63]">
-                    <div className="flex min-h-[260px] items-center justify-center overflow-hidden rounded-[24px] border-2 border-[#c87d4c] bg-[#f6bf8f]">
+                    <div className="flex min-h-[220px] items-center justify-center overflow-hidden rounded-[24px] border-2 border-[#c87d4c] bg-[#f6bf8f]">
                         {avatarSprites?.[derivedMood] ? (
                             <img
                                 src={avatarSprites[derivedMood]}
                                 alt={`${derivedMood} companion sprite`}
-                                className="h-52 w-52 object-contain"
+                                className="h-48 w-48 object-contain"
                             />
                         ) : (
                             <PixelScene />
@@ -395,334 +412,334 @@ export default function Todo() {
                     </div>
                 </section>
 
-                <header className="space-y-3 text-center">
+                <header className="space-y-2 text-center">
                     <h1 className="text-3xl font-bold tracking-tight text-[#522a11] sm:text-4xl">
-                        Time-boxed to-do list with instant scoring
+                        Focus buddy
                     </h1>
                     <p className="text-base text-[#6f3d1e] sm:text-lg">
-                        Add tasks with an expected duration, run their timers, pause when needed, and mark
-                        them complete. Finish with more than 30% of the time left to earn 3 points; otherwise
-                        you&apos;ll get 2. Letting the timer run out gives 0 points. Simple, steady, and a little
-                        clingy.
-                    </p>
-                    <p className="text-sm font-semibold uppercase tracking-[0.3rem] text-[#a25327]">
-                        the bear is watching for your next task
+                        Upload a buddy, then run one task at a time. Finish early to score points.
                     </p>
                 </header>
 
-                <section className="flex flex-col gap-4 rounded-[32px] border-4 border-[#f0c6a1] bg-[#fff4e7] p-6 shadow-[0_8px_0_#e7a977] sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-2 text-left">
-                        <p className="text-xs font-semibold uppercase tracking-[0.35rem] text-[#c36b3d]">
-                            Upload your buddy
-                        </p>
-                        <p className="text-base text-[#6f3d1e]">
-                            Drop a photo of your pet or favorite human and we&apos;ll cook up 8-bit sprites for
-                            happy, curious, and sad moods using Google Imagen.
-                        </p>
-                        {avatarInfo && <p className="text-sm text-[#3b7a52]">{avatarInfo}</p>}
-                        {avatarError && (
-                            <p className="text-sm text-[#c2473d]" role="alert">
-                                {avatarError}
-                            </p>
-                        )}
-                    </div>
-                    <div className="flex w-full flex-col gap-3 rounded-[24px] border-2 border-dashed border-[#f1d1b4] bg-white/80 p-4 text-left sm:w-auto">
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleAvatarFileChange}
-                            className="text-sm text-[#5b2f16] file:mr-3 file:rounded-full file:border-0 file:bg-[#f3c498] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#5b2f16] file:shadow-[0_3px_0_#c6834f]"
-                        />
-                        <button
-                            type="button"
-                            onClick={handleGenerateAvatar}
-                            disabled={isAvatarLoading}
-                            className="rounded-[24px] bg-[#f19c57] px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_4px_0_#c67434] transition hover:-translate-y-0.5 hover:bg-[#f3a96f] disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            {isAvatarLoading ? "Pixelating..." : "Generate sprite set"}
-                        </button>
-                        {avatarSprites && (
-                            <div className="grid grid-cols-3 gap-2 rounded-[18px] bg-[#fff6ed] p-2">
-                                {["happy", "curious", "sad"].map((mood) => (
-                                    <div key={mood} className="flex flex-col items-center gap-1">
-                                        <div className="text-xs font-semibold uppercase tracking-[0.1rem] text-[#a5643e]">
-                                            {mood}
-                                        </div>
-                                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#f3c498] bg-white/90 p-1">
-                                            {avatarSprites?.[mood] ? (
-                                                <img
-                                                    src={avatarSprites[mood]}
-                                                    alt={`${mood} sprite`}
-                                                    className="h-full w-full object-contain"
-                                                />
-                                            ) : (
-                                                <span className="text-[10px] text-[#c8a48b]">Pending</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </section>
-
-                <section className="flex flex-col gap-4 rounded-[32px] border-4 border-[#f3ba92] bg-[#ffe6cf] p-6 text-left shadow-[0_8px_0_#e3a272] sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.35rem] text-[#b26233]">
-                            Bear buddy report
-                        </p>
-                        <p className="text-lg font-semibold text-[#5a2c14]">
-                            {bearStatus.feelingSummary || "The bear tilts its head, waiting for an update."}
-                        </p>
-                        <p className="text-sm text-[#7d4a2c]">
-                            {bearStatus.buddyNote || "Tap the button so I can send you a new note!"}
-                        </p>
-                        {bearStatusError && (
-                            <p className="text-sm text-[#c2473d]" role="alert">
-                                {bearStatusError}
-                            </p>
-                        )}
-                    </div>
-                    <div className="flex flex-col items-start gap-2 sm:items-end">
-                        <button
-                            type="button"
-                            onClick={handleCheckBearBuddy}
-                            disabled={isFetchingBear}
-                            className="rounded-[24px] bg-[#5fb389] px-5 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_5px_0_#347759] transition hover:-translate-y-0.5 hover:bg-[#6ec69b] disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            {isFetchingBear ? "Listening..." : "Check on the bear"}
-                        </button>
-                        <p className="text-xs text-[#8a5a38]">We only send brief task summaries for guidance.</p>
-                    </div>
-                </section>
-
-                <section className="rounded-[32px] border-4 border-[#f3c498] bg-[#fff2e2] p-6 shadow-[0_10px_0_#f0b88b]">
-                    <form
-                        onSubmit={handleAddTask}
-                        className="flex flex-col gap-4 lg:flex-row lg:items-end"
-                    >
-                        <div className="flex-1">
-                            <label
-                                htmlFor="taskName"
-                                className="block text-xs font-semibold uppercase tracking-[0.2rem] text-[#a25327]"
-                            >
-                                Task
-                            </label>
-                            <input
-                                id="taskName"
-                                type="text"
-                                value={taskName}
-                                onChange={(event) => setTaskName(event.target.value)}
-                                placeholder="Draft sprint update, fix bug #181..."
-                                className="mt-1 w-full rounded-[24px] border-2 border-[#f1d4bb] bg-white px-4 py-3 text-base text-[#4b2b18] placeholder-[#c49b7f] shadow-[0_4px_0_#f0c7a4] outline-none transition focus:border-[#70c97f] focus:shadow-[0_4px_0_#4a9d59]"
-                            />
-                        </div>
-
-                        <div className="w-full max-w-[9rem]">
-                            <label
-                                htmlFor="taskDuration"
-                                className="block text-xs font-semibold uppercase tracking-[0.2rem] text-[#a25327]"
-                            >
-                                Minutes
-                            </label>
-                            <input
-                                id="taskDuration"
-                                type="number"
-                                min={1}
-                                step={1}
-                                value={durationInput}
-                                onChange={(event) => setDurationInput(event.target.value)}
-                                className="mt-1 w-full rounded-[24px] border-2 border-[#f1d4bb] bg-white px-3 py-3 text-center text-base text-[#4b2b18] shadow-[0_4px_0_#f0c7a4] outline-none transition focus:border-[#70c97f] focus:shadow-[0_4px_0_#4a9d59]"
-                            />
-                        </div>
-
-                        <button
-                            type="submit"
-                            className="w-full rounded-[24px] bg-[#33b074] px-6 py-3 text-base font-semibold uppercase tracking-wide text-white shadow-[0_6px_0_#1b7b4c] transition hover:-translate-y-0.5 hover:bg-[#42c482] lg:w-auto"
-                        >
-                            Add task
-                        </button>
-                    </form>
-                    {error && (
-                        <p className="mt-2 text-sm text-[#cc4444]" role="alert">
-                            {error}
-                        </p>
-                    )}
-
-                    <div className="mt-6 grid gap-4 rounded-[24px] border-2 border-[#f6d7bd] bg-white/70 p-4 text-[#5a361d] sm:grid-cols-2 sm:gap-6">
+                {wizardStep === 1 ? (
+                    <section className="flex flex-col gap-4 rounded-[32px] border-4 border-[#f0c6a1] bg-[#fffaf3] p-6 shadow-[0_8px_0_#e7a977]">
                         <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.2rem] text-[#b06638]">
-                                Active timers
+                            <p className="text-sm font-semibold uppercase tracking-[0.35rem] text-[#b26233]">
+                                Step 1 · Sprite setup
                             </p>
-                            <p className="text-3xl font-bold text-[#442110]">
-                                {tasks.filter((task) => task.isRunning).length}
-                            </p>
-                            <p className="text-xs text-[#c4532a]">
-                                The bear taps its foot when this stays at zero.
+                            <p className="text-sm text-[#6f3d1e]">
+                                Drop one image. We&apos;ll build happy, curious, and sad moods from it.
                             </p>
                         </div>
-                        <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.2rem] text-[#b06638]">
-                                Total score
-                            </p>
-                            <p className="text-3xl font-bold text-[#442110]">{totalPoints}</p>
-                            <p className="text-xs text-[#6d9e4f]">
-                                More points = happier pixel buddy.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="mt-6 rounded-[24px] border-2 border-[#f0ceb0] bg-white/80 p-4 text-[#5a361d] shadow-[0_4px_0_#efc39f]">
-                        <label
-                            htmlFor="aiTaskPrompt"
-                            className="text-xs font-semibold uppercase tracking-[0.25rem] text-[#b25a2e]"
-                        >
-                            Describe a task for me
-                        </label>
-                        <textarea
-                            id="aiTaskPrompt"
-                            value={aiTaskPrompt}
-                            onChange={(event) => setAiTaskPrompt(event.target.value)}
-                            placeholder="Workout for 20 minutes, write status update for 15, etc."
-                            rows={3}
-                            className="mt-2 w-full rounded-[20px] border-2 border-[#f1d4bb] bg-white/90 px-4 py-3 text-base text-[#4b2b18] placeholder-[#c49b7f] shadow-[0_4px_0_#f0c7a4] outline-none transition focus:border-[#70c97f] focus:shadow-[0_4px_0_#4a9d59]"
-                        />
-                        {aiTaskInfo && (
-                            <p className="mt-2 text-sm text-[#3b7a52]">
-                                {aiTaskInfo}
-                            </p>
-                        )}
-                        {aiTaskError && (
-                            <p className="mt-2 text-sm text-[#c2473d]" role="alert">
-                                {aiTaskError}
-                            </p>
-                        )}
-                        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-3 rounded-[24px] border-2 border-dashed border-[#f1d1b4] bg-white/80 p-4">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleAvatarFileChange}
+                                className="text-sm text-[#5b2f16] file:mr-3 file:rounded-full file:border-0 file:bg-[#f3c498] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#5b2f16] file:shadow-[0_3px_0_#c6834f]"
+                            />
                             <button
                                 type="button"
-                                onClick={handleCreateTaskFromPrompt}
-                                disabled={isAiTaskLoading}
-                                className="w-full rounded-[24px] bg-[#c16a38] px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_4px_0_#8f4320] transition hover:-translate-y-0.5 hover:bg-[#d97844] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                                onClick={handleGenerateAvatar}
+                                disabled={isAvatarLoading}
+                                className="rounded-[24px] bg-[#f19c57] px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_4px_0_#c67434] transition hover:-translate-y-0.5 hover:bg-[#f3a96f] disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                {isAiTaskLoading ? "Asking the bear..." : "Let the bear plan it"}
+                                {isAvatarLoading ? "Pixelating..." : "Generate sprite set"}
                             </button>
-                            <p className="text-xs text-[#8a5a38]">
-                                Tip: include a time like &quot;for 30 minutes&quot; so the timer is precise.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="mt-4 rounded-2xl border border-rose-100 bg-rose-50/80 p-4 text-sm text-rose-600 shadow-inner">
-                        <p>
-                            Cozy reminder: your gentle sidekick thrives on checkmarks. Give them a
-                            task to nibble on within the next 10 minutes.
-                        </p>
-                    </div>
-                </section>
-
-                <section className="rounded-[32px] border-4 border-[#f1caa7] bg-[#fff6ed] p-6 shadow-[0_10px_0_#ebb88f]">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                        <div>
-                            <h2 className="text-xl font-semibold text-[#4c220f]">
-                                Your tasks ({tasks.length})
-                            </h2>
-                            <p className="text-sm text-[#8d5430]">
-                                Knock them out to fill the health bar later on.
-                            </p>
-                        </div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.3rem] text-[#ca5d30]">
-                            don&apos;t keep the bear waiting
-                        </p>
-                    </div>
-
-                    {tasks.length === 0 && (
-                        <p className="mt-6 rounded-[24px] border-2 border-dashed border-[#edc59d] bg-[#fff1e0] px-6 py-10 text-center text-sm text-[#8c4a20]">
-                            No tasks yet. Add one above and we&apos;ll stop sending guilt trips... maybe.
-                        </p>
-                    )}
-
-                    <div className="mt-6 space-y-4">
-                        {tasks.map((task) => {
-                            const completionPercent =
-                                task.duration === 0
-                                    ? 0
-                                    : Math.min(
-                                        100,
-                                        Math.round(
-                                            ((task.duration - task.remaining) / task.duration) *
-                                            100,
-                                        ),
-                                    );
-                            const statusLabel = task.isCompleted
-                                ? `Awarded ${task.points} pts`
-                                : task.isRunning
-                                    ? "Running"
-                                    : "Paused";
-
-                            return (
-                                <article
-                                    key={task.id}
-                                    className="rounded-[24px] border-2 border-[#f3d3b6] bg-white p-5 shadow-[0_6px_0_#f0c49f]"
-                                >
-                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                        <div>
-                                            <h3 className="text-lg font-semibold text-[#4f230f]">
-                                                {task.title}
-                                            </h3>
-                                            <p className="text-sm text-[#8d5430]">
-                                                {formatTime(task.remaining)} remaining · starts at {formatTime(task.duration)}
-                                            </p>
+                            {avatarInfo && <p className="text-sm text-[#3b7a52]">{avatarInfo}</p>}
+                            {avatarError && (
+                                <p className="text-sm text-[#c2473d]" role="alert">
+                                    {avatarError}
+                                </p>
+                            )}
+                            {avatarSprites && (
+                                <div className="grid grid-cols-3 gap-2 rounded-[18px] bg-[#fff6ed] p-2">
+                                    {["happy", "curious", "sad"].map((mood) => (
+                                        <div key={mood} className="flex flex-col items-center gap-1 text-center">
+                                            <div className="text-xs font-semibold uppercase tracking-[0.1rem] text-[#a5643e]">
+                                                {mood}
+                                            </div>
+                                            <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#f3c498] bg-white/90 p-1">
+                                                {avatarSprites?.[mood] ? (
+                                                    <img
+                                                        src={avatarSprites[mood]}
+                                                        alt={`${mood} sprite`}
+                                                        className="h-full w-full object-contain"
+                                                    />
+                                                ) : (
+                                                    <span className="text-[10px] text-[#c8a48b]">Pending</span>
+                                                )}
+                                            </div>
                                         </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => handleWizardNav(2)}
+                            className="self-end rounded-[24px] border-2 border-[#33b074] px-4 py-2 text-sm font-semibold uppercase tracking-wide text-[#33b074] transition hover:bg-[#33b074] hover:text-white"
+                        >
+                            Continue to tasks
+                        </button>
+                    </section>
+                ) : (
+                    <section className="rounded-[32px] border-4 border-[#f3c498] bg-[#fff2e2] p-6 shadow-[0_10px_0_#f0b88b]">
+                        <div className="flex items-center justify-between gap-3 text-left">
+                            <div>
+                                <p className="text-sm font-semibold uppercase tracking-[0.35rem] text-[#b26233]">
+                                    Step 2 · Plan a task
+                                </p>
+                                <p className="text-sm text-[#6f3d1e]">Use AI or keep it manual.</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleToggleTaskMode}
+                                className="rounded-[20px] border-2 border-[#f1d4bb] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[#8a4d2c] transition hover:border-[#f19c57]"
+                            >
+                                {isManualMode ? "Use AI prompt" : "Use manual entry"}
+                            </button>
+                        </div>
 
-                                        <span className="text-xs font-semibold uppercase tracking-[0.2rem] text-[#7c3e26]">
-                                            {statusLabel}
-                                        </span>
-                                    </div>
+                        {isManualMode ? (
+                            <form
+                                onSubmit={handleAddTask}
+                                className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end"
+                            >
+                                <div className="flex-1">
+                                    <label
+                                        htmlFor="taskName"
+                                        className="block text-xs font-semibold uppercase tracking-[0.2rem] text-[#a25327]"
+                                    >
+                                        Task name
+                                    </label>
+                                    <input
+                                        id="taskName"
+                                        type="text"
+                                        value={taskName}
+                                        onChange={(event) => setTaskName(event.target.value)}
+                                        placeholder="Focus block..."
+                                        className="mt-1 w-full rounded-[24px] border-2 border-[#f1d4bb] bg-white px-4 py-3 text-base text-[#4b2b18] shadow-[0_4px_0_#f0c7a4] outline-none transition focus:border-[#70c97f] focus:shadow-[0_4px_0_#4a9d59]"
+                                    />
+                                </div>
 
-                                    <div className="mt-4 h-2 rounded-full bg-[#fee4c9]">
-                                        <div
-                                            className="h-full rounded-full bg-gradient-to-r from-[#f8b36c] via-[#e27d5a] to-[#63b97a] transition-all"
-                                            style={{ width: `${completionPercent}%` }}
-                                        />
-                                    </div>
+                                <div className="w-full max-w-[9rem]">
+                                    <label
+                                        htmlFor="taskDuration"
+                                        className="block text-xs font-semibold uppercase tracking-[0.2rem] text-[#a25327]"
+                                    >
+                                        Minutes
+                                    </label>
+                                    <input
+                                        id="taskDuration"
+                                        type="number"
+                                        min={1}
+                                        step={1}
+                                        value={durationInput}
+                                        onChange={(event) => setDurationInput(event.target.value)}
+                                        className="mt-1 w-full rounded-[24px] border-2 border-[#f1d4bb] bg-white px-3 py-3 text-center text-base text-[#4b2b18] shadow-[0_4px_0_#f0c7a4] outline-none transition focus:border-[#70c97f] focus:shadow-[0_4px_0_#4a9d59]"
+                                    />
+                                </div>
 
-                                    <div className="mt-4 flex flex-wrap gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleToggleTimer(task.id)}
-                                            disabled={task.isCompleted || task.remaining <= 0}
-                                            className={`rounded-full px-4 py-2 text-sm font-semibold uppercase tracking-wide text-[#4b2b18] shadow-[0_4px_0_#d59b6f] transition ${task.isRunning
-                                                ? "bg-[#f8cf7a] hover:bg-[#f6c05d]"
-                                                : "bg-[#bde687] hover:bg-[#a9da68]"
-                                                } ${task.isCompleted || task.remaining <= 0 ? "cursor-not-allowed opacity-50" : ""
-                                                }`}
+                                <button
+                                    type="submit"
+                                    className="w-full rounded-[24px] bg-[#33b074] px-6 py-3 text-base font-semibold uppercase tracking-wide text-white shadow-[0_6px_0_#1b7b4c] transition hover:-translate-y-0.5 hover:bg-[#42c482] lg:w-auto"
+                                >
+                                    Add task
+                                </button>
+                                {error && (
+                                    <p className="text-sm text-[#cc4444]" role="alert">
+                                        {error}
+                                    </p>
+                                )}
+                            </form>
+                        ) : (
+                            <div className="mt-4 rounded-[24px] border-2 border-[#f0ceb0] bg-white/80 p-4 text-[#5a361d] shadow-[0_4px_0_#efc39f]">
+                                <label
+                                    htmlFor="aiTaskPrompt"
+                                    className="text-xs font-semibold uppercase tracking-[0.25rem] text-[#b25a2e]"
+                                >
+                                    Describe what you need to do
+                                </label>
+                                <textarea
+                                    id="aiTaskPrompt"
+                                    value={aiTaskPrompt}
+                                    onChange={(event) => setAiTaskPrompt(event.target.value)}
+                                    placeholder="e.g. Write release notes for 20 minutes"
+                                    rows={3}
+                                    className="mt-2 w-full rounded-[20px] border-2 border-[#f1d4bb] bg-white px-4 py-3 text-base text-[#4b2b18] placeholder-[#c49b7f] shadow-[0_4px_0_#f0c7a4] outline-none transition focus:border-[#70c97f] focus:shadow-[0_4px_0_#4a9d59]"
+                                />
+                                {aiTaskInfo && (
+                                    <p className="mt-2 text-sm text-[#3b7a52]">
+                                        {aiTaskInfo}
+                                    </p>
+                                )}
+                                {aiTaskError && (
+                                    <p className="mt-2 text-sm text-[#c2473d]" role="alert">
+                                        {aiTaskError}
+                                    </p>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={handleCreateTaskFromPrompt}
+                                    disabled={isAiTaskLoading}
+                                    className="mt-3 w-full rounded-[24px] bg-[#c16a38] px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_4px_0_#8f4320] transition hover:-translate-y-0.5 hover:bg-[#d97844] disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {isAiTaskLoading ? "Thinking..." : "Ask AI to add task"}
+                                </button>
+                            </div>
+                        )}
+                    </section>
+                )}
+
+                {isWizardComplete && (
+                    <>
+                        <section className="flex flex-col gap-4 rounded-[32px] border-4 border-[#f3ba92] bg-[#ffe6cf] p-6 text-left shadow-[0_8px_0_#e3a272] sm:flex-row sm:items-center sm:justify-between">
+                            <div className="space-y-2">
+                                <p className="text-xs font-semibold uppercase tracking-[0.35rem] text-[#b26233]">
+                                    Bear buddy
+                                </p>
+                                <p className="text-lg font-semibold text-[#5a2c14]">
+                                    {bearStatus.feelingSummary || "No update yet"}
+                                </p>
+                                <p className="text-sm text-[#7d4a2c]">
+                                    {bearStatus.buddyNote || "Send the bear your running tasks for a vibe check."}
+                                </p>
+                                {bearStatusError && (
+                                    <p className="text-sm text-[#c2473d]" role="alert">
+                                        {bearStatusError}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="flex flex-col items-start gap-2 sm:items-end">
+                                <button
+                                    type="button"
+                                    onClick={handleCheckBearBuddy}
+                                    disabled={isFetchingBear}
+                                    className="rounded-[24px] bg-[#33b074] px-5 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_4px_0_#1b7b4c] transition hover:-translate-y-0.5 hover:bg-[#42c482] disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {isFetchingBear ? "Checking..." : "Check the bear"}
+                                </button>
+                            </div>
+                        </section>
+
+                        <section className="rounded-[32px] border-4 border-[#f6c788] bg-[#fffaf4] p-6 shadow-[0_8px_0_#edba76]">
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="rounded-[24px] border-2 border-[#f6d7bd] bg-white/80 p-4 text-center">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.2rem] text-[#b06638]">
+                                        Active timers
+                                    </p>
+                                    <p className="text-3xl font-bold text-[#442110]">
+                                        {tasks.filter((task) => task.isRunning).length}
+                                    </p>
+                                </div>
+                                <div className="rounded-[24px] border-2 border-[#f6d7bd] bg-white/80 p-4 text-center">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.2rem] text-[#b06638]">
+                                        Total score
+                                    </p>
+                                    <p className="text-3xl font-bold text-[#442110]">{totalPoints}</p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="rounded-[32px] border-4 border-[#f1caa7] bg-[#fff6ed] p-6 shadow-[0_10px_0_#ebb88f]">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <h2 className="text-xl font-semibold text-[#4c220f]">Tasks ({tasks.length})</h2>
+                                <p className="text-xs font-semibold uppercase tracking-[0.3rem] text-[#ca5d30]">
+                                    Keep it steady
+                                </p>
+                            </div>
+
+                            {tasks.length === 0 && (
+                                <p className="mt-6 rounded-[24px] border-2 border-dashed border-[#edc59d] bg-[#fff1e0] px-6 py-10 text-center text-sm text-[#8c4a20]">
+                                    Add a task above to get started.
+                                </p>
+                            )}
+
+                            <div className="mt-6 space-y-4">
+                                {tasks.map((task) => {
+                                    const completionPercent =
+                                        task.duration === 0
+                                            ? 0
+                                            : Math.min(
+                                                100,
+                                                Math.round(
+                                                    ((task.duration - task.remaining) / task.duration) *
+                                                    100,
+                                                ),
+                                            );
+                                    const statusLabel = task.isCompleted
+                                        ? `Awarded ${task.points} pts`
+                                        : task.isRunning
+                                            ? "Running"
+                                            : "Paused";
+
+                                    return (
+                                        <article
+                                            key={task.id}
+                                            className="rounded-[24px] border-2 border-[#f3d3b6] bg-white p-5 shadow-[0_6px_0_#f0c49f]"
                                         >
-                                            {task.isRunning ? "Pause" : "Start"}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleCompleteTask(task.id)}
-                                            disabled={task.isCompleted || task.remaining <= 0}
-                                            className={`rounded-full px-4 py-2 text-sm font-semibold uppercase tracking-wide shadow-[0_4px_0_#d38174] transition ${task.isCompleted || task.remaining <= 0
-                                                ? "cursor-not-allowed bg-[#f5e4d4] text-[#c2a992]"
-                                                : "bg-[#f2a29f] text-[#5f1f1f] hover:bg-[#f38d88]"
-                                                }`}
-                                        >
-                                            Complete
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDeleteTask(task.id)}
-                                            className="rounded-full border-2 border-[#e7c5a7] px-4 py-2 text-sm font-semibold uppercase tracking-wide text-[#a4673d] transition hover:border-[#d77a58] hover:text-[#d77a58]"
-                                        >
-                                            Remove
-                                        </button>
-                                    </div>
-                                </article>
-                            );
-                        })}
-                    </div>
-                </section>
+                                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                                <div>
+                                                    <h3 className="text-lg font-semibold text-[#4f230f]">
+                                                        {task.title}
+                                                    </h3>
+                                                    <p className="text-sm text-[#8d5430]">
+                                                        {formatTime(task.remaining)} remaining · starts at {formatTime(task.duration)}
+                                                    </p>
+                                                </div>
+
+                                                <span className="text-xs font-semibold uppercase tracking-[0.2rem] text-[#7c3e26]">
+                                                    {statusLabel}
+                                                </span>
+                                            </div>
+
+                                            <div className="mt-4 h-2 rounded-full bg-[#fee4c9]">
+                                                <div
+                                                    className="h-full rounded-full bg-gradient-to-r from-[#f8b36c] via-[#e27d5a] to-[#63b97a] transition-all"
+                                                    style={{ width: `${completionPercent}%` }}
+                                                />
+                                            </div>
+
+                                            <div className="mt-4 flex flex-wrap gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleTimer(task.id)}
+                                                    disabled={task.isCompleted || task.remaining <= 0}
+                                                    className={`rounded-full px-4 py-2 text-sm font-semibold uppercase tracking-wide text-[#4b2b18] shadow-[0_4px_0_#d59b6f] transition ${task.isRunning
+                                                        ? "bg-[#f8cf7a] hover:bg-[#f6c05d]"
+                                                        : "bg-[#bde687] hover:bg-[#a9da68]"
+                                                        } ${task.isCompleted || task.remaining <= 0 ? "cursor-not-allowed opacity-50" : ""
+                                                        }`}
+                                                >
+                                                    {task.isRunning ? "Pause" : "Start"}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleCompleteTask(task.id)}
+                                                    disabled={task.isCompleted || task.remaining <= 0}
+                                                    className={`rounded-full px-4 py-2 text-sm font-semibold uppercase tracking-wide shadow-[0_4px_0_#d38174] transition ${task.isCompleted || task.remaining <= 0
+                                                        ? "cursor-not-allowed bg-[#f5e4d4] text-[#c2a992]"
+                                                        : "bg-[#f2a29f] text-[#5f1f1f] hover:bg-[#f38d88]"
+                                                        }`}
+                                                >
+                                                    Complete
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteTask(task.id)}
+                                                    className="rounded-full border-2 border-[#e7c5a7] px-4 py-2 text-sm font-semibold uppercase tracking-wide text-[#a4673d] transition hover:border-[#d77a58] hover:text-[#d77a58]"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </article>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    </>
+                )}
             </div>
         </main>
     );
