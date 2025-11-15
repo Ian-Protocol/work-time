@@ -26,11 +26,97 @@ const calculatePoints = (task) => {
     return 2;
 };
 
+const PixelScene = () => (
+    <svg
+        viewBox="0 0 320 180"
+        role="img"
+        aria-label="Pixel art room with a cozy bear waiting for tasks"
+        className="h-auto w-full"
+        xmlns="http://www.w3.org/2000/svg"
+    >
+        <rect width="320" height="120" fill="#f7c89c" />
+        <rect y="120" width="320" height="60" fill="#c98457" />
+        <rect y="118" width="320" height="4" fill="#b87345" />
+
+        <rect x="40" y="22" width="56" height="38" fill="#ffe0b8" stroke="#ac6b3a" strokeWidth="4" />
+        <rect x="44" y="26" width="48" height="30" fill="#86c292" />
+
+        <rect x="230" y="18" width="60" height="42" fill="#ffe0b8" stroke="#ac6b3a" strokeWidth="4" />
+        <rect x="234" y="22" width="52" height="34" fill="#f7cfaa" />
+        <rect x="244" y="52" width="4" height="12" fill="#ac6b3a" />
+
+        <rect x="130" y="22" width="32" height="32" fill="#ffe0b8" stroke="#ac6b3a" strokeWidth="4" />
+        <rect x="138" y="30" width="16" height="16" fill="#f4815e" />
+
+        <rect x="72" y="120" width="60" height="32" fill="#b46c40" />
+        <rect x="76" y="124" width="52" height="24" fill="#f4b284" />
+        <rect x="80" y="108" width="10" height="16" fill="#f4b284" />
+        <rect x="86" y="108" width="6" height="16" fill="#ac6b3a" />
+        <rect x="110" y="108" width="16" height="16" fill="#d9774c" />
+
+        <rect x="188" y="120" width="90" height="32" rx="4" fill="#cd7f58" />
+        <rect x="184" y="104" width="98" height="24" rx="6" fill="#f6b487" />
+        <rect x="178" y="120" width="8" height="32" fill="#95512f" />
+        <rect x="280" y="120" width="8" height="32" fill="#95512f" />
+        <rect x="206" y="108" width="36" height="10" fill="#fbe4cc" />
+
+        <rect x="120" y="128" width="80" height="12" rx="6" fill="#fdddbf" />
+
+        <rect x="152" y="70" width="16" height="36" fill="#8a4b2d" />
+        <rect x="140" y="70" width="44" height="32" rx="4" fill="#a7633b" />
+        <rect x="140" y="60" width="12" height="16" rx="6" fill="#8a4b2d" />
+        <rect x="172" y="60" width="12" height="16" rx="6" fill="#8a4b2d" />
+        <rect x="148" y="84" width="8" height="12" fill="#f2b784" />
+        <rect x="168" y="84" width="8" height="12" fill="#f2b784" />
+        <rect x="160" y="104" width="12" height="12" fill="#8a4b2d" />
+
+        <rect x="150" y="66" width="6" height="6" fill="#3b1f16" />
+        <rect x="170" y="66" width="6" height="6" fill="#3b1f16" />
+        <rect x="162" y="76" width="6" height="6" fill="#3b1f16" />
+    </svg>
+);
+
 export default function Todo() {
     const [tasks, setTasks] = useState([]);
     const [taskName, setTaskName] = useState("");
     const [durationInput, setDurationInput] = useState("25");
     const [error, setError] = useState("");
+    const [aiTaskPrompt, setAiTaskPrompt] = useState("");
+    const [aiTaskError, setAiTaskError] = useState("");
+    const [aiTaskInfo, setAiTaskInfo] = useState("");
+    const [isAiTaskLoading, setIsAiTaskLoading] = useState(false);
+    const [bearStatus, setBearStatus] = useState({
+        feelingSummary: "",
+        buddyNote: "",
+    });
+    const [bearStatusError, setBearStatusError] = useState("");
+    const [isFetchingBear, setIsFetchingBear] = useState(false);
+
+    const appendTask = (title, durationMinutes) => {
+        const trimmedTitle = (title ?? "").trim();
+
+        if (!trimmedTitle) {
+            throw new Error("Give the task a name before adding it.");
+        }
+
+        if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+            throw new Error("Duration must be a number greater than 0.");
+        }
+
+        const durationInSeconds = Math.max(5, Math.round(durationMinutes * 60));
+        const newTask = {
+            id: Date.now(),
+            title: trimmedTitle,
+            duration: durationInSeconds,
+            remaining: durationInSeconds,
+            isRunning: false,
+            isCompleted: false,
+            points: null,
+        };
+
+        setTasks((prev) => [...prev, newTask]);
+        return newTask;
+    };
 
     const hasRunningTasks = useMemo(
         () =>
@@ -78,34 +164,16 @@ export default function Todo() {
 
     const handleAddTask = (event) => {
         event.preventDefault();
-
-        if (!taskName.trim()) {
-            setError("Give the task a name before adding it.");
-            return;
-        }
-
-        const parsedMinutes = Number.parseFloat(durationInput);
-
-        if (!Number.isFinite(parsedMinutes) || parsedMinutes <= 0) {
-            setError("Duration must be a number greater than 0.");
-            return;
-        }
-
-        const durationInSeconds = Math.max(5, Math.round(parsedMinutes * 60));
-        const newTask = {
-            id: Date.now(),
-            title: taskName.trim(),
-            duration: durationInSeconds,
-            remaining: durationInSeconds,
-            isRunning: false,
-            isCompleted: false,
-            points: null,
-        };
-
-        setTasks((prev) => [...prev, newTask]);
-        setTaskName("");
-        setDurationInput("25");
         setError("");
+
+        try {
+            const parsedMinutes = Number.parseFloat(durationInput);
+            appendTask(taskName, parsedMinutes);
+            setTaskName("");
+            setDurationInput("25");
+        } catch (taskError) {
+            setError(taskError?.message ?? "Unable to add that task.");
+        }
     };
 
     const handleToggleTimer = (id) => {
@@ -146,33 +214,165 @@ export default function Todo() {
         setTasks((prev) => prev.filter((task) => task.id !== id));
     };
 
+    const handleCreateTaskFromPrompt = async () => {
+        const cleanedPrompt = aiTaskPrompt.trim();
+        if (!cleanedPrompt) {
+            setAiTaskError("Describe what you'd like me to plan.");
+            setAiTaskInfo("");
+            return;
+        }
+
+        setAiTaskError("");
+        setAiTaskInfo("");
+        setIsAiTaskLoading(true);
+
+        try {
+            const response = await fetch("/api/task-intent", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt: cleanedPrompt }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.error ?? "I couldn't interpret that task.");
+            }
+
+            let suggestedTasks = Array.isArray(data?.tasks) ? data.tasks : [];
+            if (!suggestedTasks.length && data?.title) {
+                suggestedTasks = [{ title: data.title, durationMinutes: data?.durationMinutes }];
+            }
+
+            const addedTitles = [];
+            suggestedTasks.forEach((task) => {
+                try {
+                    appendTask(task?.title, task?.durationMinutes);
+                    if (task?.title) {
+                        addedTitles.push(task.title.trim());
+                    }
+                } catch (taskError) {
+                    console.error("Unable to add AI task", taskError);
+                }
+            });
+
+            if (addedTitles.length === 0) {
+                throw new Error("The bear couldn't translate that into anything actionable.");
+            }
+
+            setAiTaskPrompt("");
+            setAiTaskInfo(
+                addedTitles.length === 1
+                    ? `Added "${addedTitles[0]}".`
+                    : `Added ${addedTitles.length} tasks: ${addedTitles.join(", ")}.`,
+            );
+        } catch (requestError) {
+            setAiTaskError(requestError?.message ?? "The bear got confused. Try again?");
+            setAiTaskInfo("");
+        } finally {
+            setIsAiTaskLoading(false);
+        }
+    };
+
+    const handleCheckBearBuddy = async () => {
+        setIsFetchingBear(true);
+        setBearStatusError("");
+
+        try {
+            const response = await fetch("/api/bear-status", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    tasksSnapshot: tasks.map((task) => ({
+                        title: task.title,
+                        isRunning: task.isRunning,
+                        isCompleted: task.isCompleted,
+                        duration: task.duration,
+                        remaining: task.remaining,
+                    })),
+                }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.error ?? "Bear buddy could not respond.");
+            }
+
+            setBearStatus({
+                feelingSummary: data?.feelingSummary ?? "",
+                buddyNote: data?.buddyNote ?? "",
+            });
+        } catch (requestError) {
+            setBearStatusError(requestError?.message ?? "Failed to reach the bear buddy.");
+        } finally {
+            setIsFetchingBear(false);
+        }
+    };
+
     return (
-        <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
-            <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-6 py-16">
-                <header className="flex flex-col gap-3 text-center sm:text-left">
-                    <p className="text-sm font-semibold uppercase tracking-[0.3rem] text-slate-400">
-                        Focus Lab
-                    </p>
-                    <h1 className="text-3xl font-semibold text-white sm:text-4xl">
+        <main className="min-h-screen bg-[#fcd3b6] text-[#5b2f16]">
+            <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-10 sm:px-8">
+                <section className="w-full rounded-[32px] border-4 border-[#f1b487] bg-[#fbe0c6] p-4 shadow-[0_12px_0_#d18f63]">
+                    <div className="overflow-hidden rounded-[24px] border-2 border-[#c87d4c] bg-[#f6bf8f]">
+                        <PixelScene />
+                    </div>
+                </section>
+
+                <header className="space-y-3 text-center">
+                    <h1 className="text-3xl font-bold tracking-tight text-[#522a11] sm:text-4xl">
                         Time-boxed to-do list with instant scoring
                     </h1>
-                    <p className="text-base text-slate-300 sm:text-lg">
-                        Add tasks with an expected duration, run their timers, pause when
-                        needed and mark them complete. Finish with more than 30% of the
-                        time left to earn 3 points, otherwise you&apos;ll get 2. Letting
-                        the timer run out gives 0 points.
+                    <p className="text-base text-[#6f3d1e] sm:text-lg">
+                        Add tasks with an expected duration, run their timers, pause when needed, and mark
+                        them complete. Finish with more than 30% of the time left to earn 3 points; otherwise
+                        you&apos;ll get 2. Letting the timer run out gives 0 points. Simple, steady, and a little
+                        clingy.
+                    </p>
+                    <p className="text-sm font-semibold uppercase tracking-[0.3rem] text-[#a25327]">
+                        the bear is watching for your next task
                     </p>
                 </header>
 
-                <section className="rounded-2xl bg-white/10 p-6 shadow-2xl backdrop-blur">
+                <section className="flex flex-col gap-4 rounded-[32px] border-4 border-[#f3ba92] bg-[#ffe6cf] p-6 text-left shadow-[0_8px_0_#e3a272] sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.35rem] text-[#b26233]">
+                            Bear buddy report
+                        </p>
+                        <p className="text-lg font-semibold text-[#5a2c14]">
+                            {bearStatus.feelingSummary || "The bear tilts its head, waiting for an update."}
+                        </p>
+                        <p className="text-sm text-[#7d4a2c]">
+                            {bearStatus.buddyNote || "Tap the button so I can send you a new note!"}
+                        </p>
+                        {bearStatusError && (
+                            <p className="text-sm text-[#c2473d]" role="alert">
+                                {bearStatusError}
+                            </p>
+                        )}
+                    </div>
+                    <div className="flex flex-col items-start gap-2 sm:items-end">
+                        <button
+                            type="button"
+                            onClick={handleCheckBearBuddy}
+                            disabled={isFetchingBear}
+                            className="rounded-[24px] bg-[#5fb389] px-5 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_5px_0_#347759] transition hover:-translate-y-0.5 hover:bg-[#6ec69b] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {isFetchingBear ? "Listening..." : "Check on the bear"}
+                        </button>
+                        <p className="text-xs text-[#8a5a38]">We only send brief task summaries for guidance.</p>
+                    </div>
+                </section>
+
+                <section className="rounded-[32px] border-4 border-[#f3c498] bg-[#fff2e2] p-6 shadow-[0_10px_0_#f0b88b]">
                     <form
                         onSubmit={handleAddTask}
-                        className="flex flex-col gap-4 lg:flex-row"
+                        className="flex flex-col gap-4 lg:flex-row lg:items-end"
                     >
                         <div className="flex-1">
                             <label
                                 htmlFor="taskName"
-                                className="block text-xs font-semibold uppercase tracking-wide text-slate-300"
+                                className="block text-xs font-semibold uppercase tracking-[0.2rem] text-[#a25327]"
                             >
                                 Task
                             </label>
@@ -181,15 +381,15 @@ export default function Todo() {
                                 type="text"
                                 value={taskName}
                                 onChange={(event) => setTaskName(event.target.value)}
-                                placeholder="Draft sprint update, fix bug #131…"
-                                className="mt-1 w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-white outline-none transition focus:border-emerald-400 focus:bg-black/30"
+                                placeholder="Draft sprint update, fix bug #181..."
+                                className="mt-1 w-full rounded-[24px] border-2 border-[#f1d4bb] bg-white px-4 py-3 text-base text-[#4b2b18] placeholder-[#c49b7f] shadow-[0_4px_0_#f0c7a4] outline-none transition focus:border-[#70c97f] focus:shadow-[0_4px_0_#4a9d59]"
                             />
                         </div>
 
                         <div className="w-full max-w-[9rem]">
                             <label
                                 htmlFor="taskDuration"
-                                className="block text-xs font-semibold uppercase tracking-wide text-slate-300"
+                                className="block text-xs font-semibold uppercase tracking-[0.2rem] text-[#a25327]"
                             >
                                 Minutes
                             </label>
@@ -200,48 +400,116 @@ export default function Todo() {
                                 step={1}
                                 value={durationInput}
                                 onChange={(event) => setDurationInput(event.target.value)}
-                                className="mt-1 w-full rounded-xl border border-white/20 bg-white/10 px-3 py-3 text-center text-white outline-none transition focus:border-emerald-400 focus:bg-black/30"
+                                className="mt-1 w-full rounded-[24px] border-2 border-[#f1d4bb] bg-white px-3 py-3 text-center text-base text-[#4b2b18] shadow-[0_4px_0_#f0c7a4] outline-none transition focus:border-[#70c97f] focus:shadow-[0_4px_0_#4a9d59]"
                             />
                         </div>
 
                         <button
                             type="submit"
-                            className="w-full rounded-xl bg-emerald-400 px-6 py-3 font-semibold text-emerald-950 transition hover:bg-emerald-300 lg:w-auto"
+                            className="w-full rounded-[24px] bg-[#33b074] px-6 py-3 text-base font-semibold uppercase tracking-wide text-white shadow-[0_6px_0_#1b7b4c] transition hover:-translate-y-0.5 hover:bg-[#42c482] lg:w-auto"
                         >
                             Add task
                         </button>
                     </form>
                     {error && (
-                        <p className="mt-2 text-sm text-rose-300" role="alert">
+                        <p className="mt-2 text-sm text-[#cc4444]" role="alert">
                             {error}
                         </p>
                     )}
 
-                    <div className="mt-6 grid gap-4 rounded-xl bg-black/30 p-4 sm:grid-cols-2 sm:gap-6">
+                    <div className="mt-6 grid gap-4 rounded-[24px] border-2 border-[#f6d7bd] bg-white/70 p-4 text-[#5a361d] sm:grid-cols-2 sm:gap-6">
                         <div>
-                            <p className="text-sm text-slate-400">Active timers</p>
-                            <p className="text-3xl font-bold text-white">
+                            <p className="text-xs font-semibold uppercase tracking-[0.2rem] text-[#b06638]">
+                                Active timers
+                            </p>
+                            <p className="text-3xl font-bold text-[#442110]">
                                 {tasks.filter((task) => task.isRunning).length}
+                            </p>
+                            <p className="text-xs text-[#c4532a]">
+                                The bear taps its foot when this stays at zero.
                             </p>
                         </div>
                         <div>
-                            <p className="text-sm text-slate-400">Total score</p>
-                            <p className="text-3xl font-bold text-white">{totalPoints}</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.2rem] text-[#b06638]">
+                                Total score
+                            </p>
+                            <p className="text-3xl font-bold text-[#442110]">{totalPoints}</p>
+                            <p className="text-xs text-[#6d9e4f]">
+                                More points = happier pixel buddy.
+                            </p>
                         </div>
+                    </div>
+
+                    <div className="mt-6 rounded-[24px] border-2 border-[#f0ceb0] bg-white/80 p-4 text-[#5a361d] shadow-[0_4px_0_#efc39f]">
+                        <label
+                            htmlFor="aiTaskPrompt"
+                            className="text-xs font-semibold uppercase tracking-[0.25rem] text-[#b25a2e]"
+                        >
+                            Describe a task for me
+                        </label>
+                        <textarea
+                            id="aiTaskPrompt"
+                            value={aiTaskPrompt}
+                            onChange={(event) => setAiTaskPrompt(event.target.value)}
+                            placeholder="Workout for 20 minutes, write status update for 15, etc."
+                            rows={3}
+                            className="mt-2 w-full rounded-[20px] border-2 border-[#f1d4bb] bg-white/90 px-4 py-3 text-base text-[#4b2b18] placeholder-[#c49b7f] shadow-[0_4px_0_#f0c7a4] outline-none transition focus:border-[#70c97f] focus:shadow-[0_4px_0_#4a9d59]"
+                        />
+                        {aiTaskInfo && (
+                            <p className="mt-2 text-sm text-[#3b7a52]">
+                                {aiTaskInfo}
+                            </p>
+                        )}
+                        {aiTaskError && (
+                            <p className="mt-2 text-sm text-[#c2473d]" role="alert">
+                                {aiTaskError}
+                            </p>
+                        )}
+                        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <button
+                                type="button"
+                                onClick={handleCreateTaskFromPrompt}
+                                disabled={isAiTaskLoading}
+                                className="w-full rounded-[24px] bg-[#c16a38] px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_4px_0_#8f4320] transition hover:-translate-y-0.5 hover:bg-[#d97844] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                            >
+                                {isAiTaskLoading ? "Asking the bear..." : "Let the bear plan it"}
+                            </button>
+                            <p className="text-xs text-[#8a5a38]">
+                                Tip: include a time like &quot;for 30 minutes&quot; so the timer is precise.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 rounded-2xl border border-rose-100 bg-rose-50/80 p-4 text-sm text-rose-600 shadow-inner">
+                        <p>
+                            Cozy reminder: your gentle sidekick thrives on checkmarks. Give them a
+                            task to nibble on within the next 10 minutes.
+                        </p>
                     </div>
                 </section>
 
-                <section className="space-y-4">
-                    <h2 className="text-xl font-semibold text-white">
-                        Your tasks ({tasks.length})
-                    </h2>
+                <section className="rounded-[32px] border-4 border-[#f1caa7] bg-[#fff6ed] p-6 shadow-[0_10px_0_#ebb88f]">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <h2 className="text-xl font-semibold text-[#4c220f]">
+                                Your tasks ({tasks.length})
+                            </h2>
+                            <p className="text-sm text-[#8d5430]">
+                                Knock them out to fill the health bar later on.
+                            </p>
+                        </div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.3rem] text-[#ca5d30]">
+                            don&apos;t keep the bear waiting
+                        </p>
+                    </div>
+
                     {tasks.length === 0 && (
-                        <p className="rounded-2xl border border-dashed border-white/20 bg-white/5 px-6 py-10 text-center text-slate-300">
-                            No tasks yet. Plan your next win above and start the timer.
+                        <p className="mt-6 rounded-[24px] border-2 border-dashed border-[#edc59d] bg-[#fff1e0] px-6 py-10 text-center text-sm text-[#8c4a20]">
+                            No tasks yet. Add one above and we&apos;ll stop sending guilt trips... maybe.
                         </p>
                     )}
 
-                    <div className="space-y-4">
+                    <div className="mt-6 space-y-4">
                         {tasks.map((task) => {
                             const completionPercent =
                                 task.duration === 0
@@ -262,27 +530,26 @@ export default function Todo() {
                             return (
                                 <article
                                     key={task.id}
-                                    className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-lg"
+                                    className="rounded-[24px] border-2 border-[#f3d3b6] bg-white p-5 shadow-[0_6px_0_#f0c49f]"
                                 >
                                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
-                                            <h3 className="text-lg font-semibold text-white">
+                                            <h3 className="text-lg font-semibold text-[#4f230f]">
                                                 {task.title}
                                             </h3>
-                                            <p className="text-sm text-slate-400">
-                                                {formatTime(task.remaining)} remaining · starts at{" "}
-                                                {formatTime(task.duration)}
+                                            <p className="text-sm text-[#8d5430]">
+                                                {formatTime(task.remaining)} remaining · starts at {formatTime(task.duration)}
                                             </p>
                                         </div>
 
-                                        <span className="text-sm font-semibold uppercase tracking-wide text-emerald-300">
+                                        <span className="text-xs font-semibold uppercase tracking-[0.2rem] text-[#7c3e26]">
                                             {statusLabel}
                                         </span>
                                     </div>
 
-                                    <div className="mt-4 h-2 rounded-full bg-white/10">
+                                    <div className="mt-4 h-2 rounded-full bg-[#fee4c9]">
                                         <div
-                                            className="h-full rounded-full bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400 transition-all"
+                                            className="h-full rounded-full bg-gradient-to-r from-[#f8b36c] via-[#e27d5a] to-[#63b97a] transition-all"
                                             style={{ width: `${completionPercent}%` }}
                                         />
                                     </div>
@@ -292,9 +559,9 @@ export default function Todo() {
                                             type="button"
                                             onClick={() => handleToggleTimer(task.id)}
                                             disabled={task.isCompleted || task.remaining <= 0}
-                                            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${task.isRunning
-                                                ? "bg-amber-400/90 text-amber-950 hover:bg-amber-300"
-                                                : "bg-emerald-400/90 text-emerald-950 hover:bg-emerald-300"
+                                            className={`rounded-full px-4 py-2 text-sm font-semibold uppercase tracking-wide text-[#4b2b18] shadow-[0_4px_0_#d59b6f] transition ${task.isRunning
+                                                ? "bg-[#f8cf7a] hover:bg-[#f6c05d]"
+                                                : "bg-[#bde687] hover:bg-[#a9da68]"
                                                 } ${task.isCompleted || task.remaining <= 0 ? "cursor-not-allowed opacity-50" : ""
                                                 }`}
                                         >
@@ -304,9 +571,9 @@ export default function Todo() {
                                             type="button"
                                             onClick={() => handleCompleteTask(task.id)}
                                             disabled={task.isCompleted || task.remaining <= 0}
-                                            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${task.isCompleted || task.remaining <= 0
-                                                ? "cursor-not-allowed bg-white/10 text-white/50"
-                                                : "bg-sky-500/80 text-sky-950 hover:bg-sky-400"
+                                            className={`rounded-full px-4 py-2 text-sm font-semibold uppercase tracking-wide shadow-[0_4px_0_#d38174] transition ${task.isCompleted || task.remaining <= 0
+                                                ? "cursor-not-allowed bg-[#f5e4d4] text-[#c2a992]"
+                                                : "bg-[#f2a29f] text-[#5f1f1f] hover:bg-[#f38d88]"
                                                 }`}
                                         >
                                             Complete
@@ -314,7 +581,7 @@ export default function Todo() {
                                         <button
                                             type="button"
                                             onClick={() => handleDeleteTask(task.id)}
-                                            className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-rose-400 hover:text-rose-200"
+                                            className="rounded-full border-2 border-[#e7c5a7] px-4 py-2 text-sm font-semibold uppercase tracking-wide text-[#a4673d] transition hover:border-[#d77a58] hover:text-[#d77a58]"
                                         >
                                             Remove
                                         </button>
