@@ -85,6 +85,11 @@ export default function Todo() {
     const [aiTaskError, setAiTaskError] = useState("");
     const [aiTaskInfo, setAiTaskInfo] = useState("");
     const [isAiTaskLoading, setIsAiTaskLoading] = useState(false);
+    const [avatarSprites, setAvatarSprites] = useState(null);
+    const [avatarError, setAvatarError] = useState("");
+    const [avatarInfo, setAvatarInfo] = useState("");
+    const [selectedAvatar, setSelectedAvatar] = useState(null);
+    const [isAvatarLoading, setIsAvatarLoading] = useState(false);
     const [bearStatus, setBearStatus] = useState({
         feelingSummary: "",
         buddyNote: "",
@@ -131,6 +136,27 @@ export default function Todo() {
         () => tasks.reduce((sum, task) => sum + (task.points ?? 0), 0),
         [tasks],
     );
+
+    const derivedMood = useMemo(() => {
+        const feeling = (bearStatus.feelingSummary ?? "").toLowerCase();
+        if (feeling.includes("happy") || feeling.includes("proud") || feeling.includes("glow")) {
+            return "happy";
+        }
+        if (feeling.includes("sad") || feeling.includes("tired")) {
+            return "sad";
+        }
+        if (feeling.includes("curious") || feeling.includes("excited")) {
+            return "curious";
+        }
+
+        if (tasks.some((task) => task.isRunning)) {
+            return "curious";
+        }
+        if (tasks.some((task) => task.isCompleted && (task.points ?? 0) >= 2)) {
+            return "happy";
+        }
+        return "sad";
+    }, [bearStatus.feelingSummary, tasks]);
 
     useEffect(() => {
         if (!hasRunningTasks) return undefined;
@@ -273,6 +299,48 @@ export default function Todo() {
         }
     };
 
+    const handleAvatarFileChange = (event) => {
+        const file = event.target.files?.[0];
+        setSelectedAvatar(file ?? null);
+        setAvatarError("");
+        setAvatarInfo(file ? `Ready to pixelate ${file.name}` : "");
+    };
+
+    const handleGenerateAvatar = async () => {
+        if (!selectedAvatar) {
+            setAvatarError("Pick a photo before generating a sprite.");
+            setAvatarInfo("");
+            return;
+        }
+
+        setAvatarError("");
+        setAvatarInfo("Generating sprite set...");
+        setIsAvatarLoading(true);
+
+        try {
+            const formData = new FormData();
+            formData.append("photo", selectedAvatar);
+
+            const response = await fetch("/api/avatar", {
+                method: "POST",
+                body: formData,
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.error ?? "Sprite magic failed. Try another photo.");
+            }
+
+            setAvatarSprites(data?.sprites ?? null);
+            setAvatarInfo("Sprite set ready! It will react to your bear's mood.");
+        } catch (uploadError) {
+            setAvatarError(uploadError?.message ?? "We couldn't create a sprite from that image.");
+            setAvatarInfo("");
+        } finally {
+            setIsAvatarLoading(false);
+        }
+    };
+
     const handleCheckBearBuddy = async () => {
         setIsFetchingBear(true);
         setBearStatusError("");
@@ -314,8 +382,16 @@ export default function Todo() {
         <main className="min-h-screen bg-[#fcd3b6] text-[#5b2f16]">
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-10 sm:px-8">
                 <section className="w-full rounded-[32px] border-4 border-[#f1b487] bg-[#fbe0c6] p-4 shadow-[0_12px_0_#d18f63]">
-                    <div className="overflow-hidden rounded-[24px] border-2 border-[#c87d4c] bg-[#f6bf8f]">
-                        <PixelScene />
+                    <div className="flex min-h-[260px] items-center justify-center overflow-hidden rounded-[24px] border-2 border-[#c87d4c] bg-[#f6bf8f]">
+                        {avatarSprites?.[derivedMood] ? (
+                            <img
+                                src={avatarSprites[derivedMood]}
+                                alt={`${derivedMood} companion sprite`}
+                                className="h-52 w-52 object-contain"
+                            />
+                        ) : (
+                            <PixelScene />
+                        )}
                     </div>
                 </section>
 
@@ -333,6 +409,62 @@ export default function Todo() {
                         the bear is watching for your next task
                     </p>
                 </header>
+
+                <section className="flex flex-col gap-4 rounded-[32px] border-4 border-[#f0c6a1] bg-[#fff4e7] p-6 shadow-[0_8px_0_#e7a977] sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-2 text-left">
+                        <p className="text-xs font-semibold uppercase tracking-[0.35rem] text-[#c36b3d]">
+                            Upload your buddy
+                        </p>
+                        <p className="text-base text-[#6f3d1e]">
+                            Drop a photo of your pet or favorite human and we&apos;ll cook up 8-bit sprites for
+                            happy, curious, and sad moods using Google Imagen.
+                        </p>
+                        {avatarInfo && <p className="text-sm text-[#3b7a52]">{avatarInfo}</p>}
+                        {avatarError && (
+                            <p className="text-sm text-[#c2473d]" role="alert">
+                                {avatarError}
+                            </p>
+                        )}
+                    </div>
+                    <div className="flex w-full flex-col gap-3 rounded-[24px] border-2 border-dashed border-[#f1d1b4] bg-white/80 p-4 text-left sm:w-auto">
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarFileChange}
+                            className="text-sm text-[#5b2f16] file:mr-3 file:rounded-full file:border-0 file:bg-[#f3c498] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#5b2f16] file:shadow-[0_3px_0_#c6834f]"
+                        />
+                        <button
+                            type="button"
+                            onClick={handleGenerateAvatar}
+                            disabled={isAvatarLoading}
+                            className="rounded-[24px] bg-[#f19c57] px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white shadow-[0_4px_0_#c67434] transition hover:-translate-y-0.5 hover:bg-[#f3a96f] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {isAvatarLoading ? "Pixelating..." : "Generate sprite set"}
+                        </button>
+                        {avatarSprites && (
+                            <div className="grid grid-cols-3 gap-2 rounded-[18px] bg-[#fff6ed] p-2">
+                                {["happy", "curious", "sad"].map((mood) => (
+                                    <div key={mood} className="flex flex-col items-center gap-1">
+                                        <div className="text-xs font-semibold uppercase tracking-[0.1rem] text-[#a5643e]">
+                                            {mood}
+                                        </div>
+                                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#f3c498] bg-white/90 p-1">
+                                            {avatarSprites?.[mood] ? (
+                                                <img
+                                                    src={avatarSprites[mood]}
+                                                    alt={`${mood} sprite`}
+                                                    className="h-full w-full object-contain"
+                                                />
+                                            ) : (
+                                                <span className="text-[10px] text-[#c8a48b]">Pending</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </section>
 
                 <section className="flex flex-col gap-4 rounded-[32px] border-4 border-[#f3ba92] bg-[#ffe6cf] p-6 text-left shadow-[0_8px_0_#e3a272] sm:flex-row sm:items-center sm:justify-between">
                     <div className="space-y-2">
